@@ -8,7 +8,7 @@
 
 Để biên dịch chương trình, bạn cần mở terminal (hoặc command prompt trên Windows) và điều hướng đến thư mục chứa mã nguồn. Sau đó, sử dụng lệnh sau:
 ```bash
-g++ -o ten_chuong_trinh ten_file.cpp
+g++ -o ten_chuong_trinh src/Main.cpp
 ```
 Thay `ten_chuong_trinh` bằng tên bạn muốn đặt cho chương trình đã biên dịch và `ten_file.cpp` bằng tên file mã nguồn của bạn.
 

@@ -5,6 +5,7 @@
 #include <tuple>
 #include <functional>
 #include <algorithm>
+#include <fstream>  // Thêm để hỗ trợ đọc file
 
 using namespace std;
 
@@ -591,11 +592,6 @@ vector<vector<int>> timPhuongAnToiUu(const vector<vector<int>>& chi_phi, vector<
             v[cot_duoc_chon] = 0;
             v_da_gan++;
             cout << "Gan v[" << cot_duoc_chon << "] = 0" << endl;
-        } else {
-            // Nếu không tìm được hàng/cột, gán u[0] = 0
-            u[0] = 0;
-            u_da_gan++;
-            cout << "Gan u[0] = 0 (mac dinh)" << endl;
         }
         
         // Tính các giá trị u, v
@@ -627,30 +623,6 @@ vector<vector<int>> timPhuongAnToiUu(const vector<vector<int>>& chi_phi, vector<
             // Kiểm tra nếu đã tính đủ u và v
             if (u_da_gan == m && v_da_gan == n) {
                 cout << "Da tinh du tat ca cac the vi u va v" << endl;
-                break;
-            }
-            
-            // Kiểm tra nếu không còn thay đổi nhưng chưa tính đủ, có thể phương án không phải phương án cơ sở
-            if (!co_thay_doi && (u_da_gan < m || v_da_gan < n)) {
-                cout << "CANH BAO: Khong the tinh du the vi (u_da_gan = " << u_da_gan 
-                     << ", v_da_gan = " << v_da_gan << "). Phuong an co the khong phai phuong an co so!" << endl;
-                
-                // Gán giá trị mặc định cho các thế vị chưa tính được
-                for (int i = 0; i < m; i++) {
-                    if (u[i] == -9999) {
-                        u[i] = 0;
-                        u_da_gan++;
-                        cout << "Gan gia tri mac dinh u[" << i << "] = 0" << endl;
-                    }
-                }
-                
-                for (int j = 0; j < n; j++) {
-                    if (v[j] == -9999) {
-                        v[j] = 0;
-                        v_da_gan++;
-                        cout << "Gan gia tri mac dinh v[" << j << "] = 0" << endl;
-                    }
-                }
                 break;
             }
         }
@@ -901,38 +873,192 @@ vector<vector<int>> timPhuongAnToiUu(const vector<vector<int>>& chi_phi, vector<
     return phuong_an;
 }
 
+// Hàm kiểm tra trường hợp suy biến
+bool kiemTraSuyBien(const vector<vector<int>>& chi_phi, const vector<int>& kho_hang, const vector<int>& cua_hang) {
+    int m = kho_hang.size();    // Số kho
+    int n = cua_hang.size();    // Số cửa hàng
+    
+    // Kiểm tra trường hợp suy biến 1: Số hàng hoặc cột bằng 0
+    if (m == 0 || n == 0) {
+        cout << "\nBai toan thuoc truong hop suy bien: Khong co kho hang hoac cua hang." << endl;
+        return true;
+    }
+    
+    // Kiểm tra trường hợp suy biến 2: Có kho hoặc cửa hàng với lượng hàng bằng 0
+    for (int i = 0; i < m; i++) {
+        if (kho_hang[i] <= 0) {
+            cout << "\nBai toan thuoc truong hop suy bien: Kho hang A" << i+1 << " co luong hang bang hoac nho hon 0." << endl;
+            return true;
+        }
+    }
+    
+    for (int j = 0; j < n; j++) {
+        if (cua_hang[j] <= 0) {
+            cout << "\nBai toan thuoc truong hop suy bien: Cua hang B" << j+1 << " co nhu cau bang hoac nho hon 0." << endl;
+            return true;
+        }
+    }
+    
+    // Kiểm tra trường hợp suy biến 3: Tổng cung bằng 0 hoặc tổng cầu bằng 0
+    int tong_cung = 0, tong_cau = 0;
+    for (int i = 0; i < m; i++) {
+        tong_cung += kho_hang[i];
+    }
+    
+    for (int j = 0; j < n; j++) {
+        tong_cau += cua_hang[j];
+    }
+    
+    if (tong_cung <= 0 || tong_cau <= 0) {
+        cout << "\nBai toan thuoc truong hop suy bien: Tong cung hoac tong cau bang hoac nho hon 0." << endl;
+        return true;
+    }
+    
+    // Kiểm tra trường hợp suy biến 4: Ma trận chi phí không hợp lệ (có giá trị âm)
+    for (int i = 0; i < m; i++) {
+        for (int j = 0; j < n; j++) {
+            if (chi_phi[i][j] < 0) {
+                cout << "\nBai toan thuoc truong hop suy bien: Chi phi van chuyen am tai [A" << i+1 << ", B" << j+1 << "]." << endl;
+                return true;
+            }
+        }
+    }
+    
+    return false;  // Không phải trường hợp suy biến
+}
+
+// Hàm đọc ma trận vận tải từ file
+// Return: true nếu đọc thành công, false nếu có lỗi
+// Format file: 
+// - Dòng 1: số kho hàng (m) và số cửa hàng (n)
+// - Dòng 2 đến m+1: lượng hàng của từng kho
+// - Dòng m+2 đến m+n+1: nhu cầu của từng cửa hàng
+// - Các dòng tiếp theo: ma trận chi phí (m x n)
+bool docMaTranTuFile(const string& ten_file, 
+                    vector<vector<int>>& chi_phi, 
+                    vector<int>& kho_hang, 
+                    vector<int>& cua_hang) {
+    ifstream file(ten_file);
+    if (!file.is_open()) {
+        cout << "Khong mo duoc file " << ten_file << endl;
+        return false;
+    }
+    
+    int kho, shop;
+    if (!(file >> kho >> shop)) {
+        cout << "Loi: Khong doc duoc so kho va so cua hang." << endl;
+        file.close();
+        return false;
+    }
+    
+    // Resize các vector để lưu trữ dữ liệu
+    kho_hang.resize(kho);
+    cua_hang.resize(shop);
+    chi_phi.resize(kho, vector<int>(shop));
+    
+    // Đọc lượng hàng của các kho
+    for (int i = 0; i < kho; i++) {
+        if (!(file >> kho_hang[i])) {
+            cout << "Loi: Khong doc duoc luong hang kho " << (i+1) << endl;
+            file.close();
+            return false;
+        }
+    }
+    
+    // Đọc nhu cầu của các cửa hàng
+    for (int j = 0; j < shop; j++) {
+        if (!(file >> cua_hang[j])) {
+            cout << "Loi: Khong doc duoc nhu cau cua hang " << (j+1) << endl;
+            file.close();
+            return false;
+        }
+    }
+    
+    // Đọc ma trận chi phí
+    for (int i = 0; i < kho; i++) {
+        for (int j = 0; j < shop; j++) {
+            if (!(file >> chi_phi[i][j])) {
+                cout << "Loi: Khong doc duoc chi phi van chuyen [" << (i+1) << "," << (j+1) << "]" << endl;
+                file.close();
+                return false;
+            }
+        }
+    }
+    
+    file.close();
+    return true;
+}
+
 int main() {
     int kho, shop;
-
-    cout << "Nhap so kho hang:";
-    cin >> kho;
-
-    cout << "Nhap so cua hang:";
-    cin >> shop;
-
-    vector<int> kho_hang(kho);
-    vector<int> cua_hang(shop);
-
-    // Nhap luong hang cua kho hang
-    for (int i = 1; i <= kho; i++) {
-        cout << "Nhap luong hang cua kho hang A" << i << ": ";
-        cin >> kho_hang[i-1];
-    }
-
-    // Nhap luong hang cua cua hang
-    for (int i = 1; i <= shop; i++) {
-        cout << "Nhap luong hang cua cua hang B" << i << ": ";
-        cin >> cua_hang[i-1];
-    }
-
-    vector<vector<int>> chi_phi(kho, vector<int>(shop));
-
-    // Nhap chi phi van chuyen tu kho hang den cua hang
-    for (int i = 1; i <= kho; i++) {
-        for (int j = 1; j <= shop; j++) {
-            cout << "Nhap chi phi van chuyen tu kho hang A" << i << " den cua hang B" << j << ": ";
-            cin >> chi_phi[i-1][j-1];
+    vector<int> kho_hang;
+    vector<int> cua_hang;
+    vector<vector<int>> chi_phi;
+    
+    // Cho người dùng chọn cách nhập dữ liệu
+    int lua_chon_nhap;
+    cout << "=== CHON CACH NHAP DU LIEU ===" << endl;
+    cout << "1. Nhap tu ban phim" << endl;
+    cout << "2. Doc tu file" << endl;
+    cout << "Nhap lua chon cua ban (1-2): ";
+    cin >> lua_chon_nhap;
+    
+    if (lua_chon_nhap == 2) {
+        // Nhập từ file
+        string ten_file;
+        cout << "Nhap ten file (vd: input.txt): ";
+        cin >> ten_file;
+        
+        if (!docMaTranTuFile(ten_file, chi_phi, kho_hang, cua_hang)) {
+            cout << "Khong the doc du lieu tu file. Chuong trinh ket thuc." << endl;
+            return 1;
         }
+        
+        kho = kho_hang.size();
+        shop = cua_hang.size();
+        
+        cout << "Doc du lieu tu file thanh cong!" << endl;
+        cout << "So kho hang: " << kho << endl;
+        cout << "So cua hang: " << shop << endl;
+    } else {
+        // Nhập từ bàn phím
+        cout << "Nhap so kho hang: ";
+        cin >> kho;
+
+        cout << "Nhap so cua hang: ";
+        cin >> shop;
+
+        kho_hang.resize(kho);
+        cua_hang.resize(shop);
+
+        // Nhập lượng hàng của kho hàng
+        for (int i = 1; i <= kho; i++) {
+            cout << "Nhap luong hang cua kho hang A" << i << ": ";
+            cin >> kho_hang[i-1];
+        }
+
+        // Nhập lượng hàng của cửa hàng
+        for (int i = 1; i <= shop; i++) {
+            cout << "Nhap luong hang cua cua hang B" << i << ": ";
+            cin >> cua_hang[i-1];
+        }
+
+        chi_phi.resize(kho, vector<int>(shop));
+
+        // Nhập chi phí vận chuyển từ kho hàng đến cửa hàng
+        for (int i = 1; i <= kho; i++) {
+            for (int j = 1; j <= shop; j++) {
+                cout << "Nhap chi phi van chuyen tu kho hang A" << i << " den cua hang B" << j << ": ";
+                cin >> chi_phi[i-1][j-1];
+            }        }    }
+
+    // In ma trận gốc (không có phương án) trước khi kiểm tra suy biến
+    inMaTranVanTai(chi_phi, kho_hang, cua_hang, "MA TRAN GOC TRUOC KHI KIEM TRA");
+    
+    // Kiểm tra trường hợp suy biến trước khi tiếp tục
+    if (kiemTraSuyBien(chi_phi, kho_hang, cua_hang)) {
+        cout << "\nDo bai toan thuoc truong hop suy bien, chuong trinh se ket thuc." << endl;
+        return 0;
     }
     
     // In ma trận gốc (không có phương án)
