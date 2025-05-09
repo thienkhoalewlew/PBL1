@@ -1,3 +1,4 @@
+<!-- filepath: README.md -->
 # Bài Toán Vận Tải - Hướng dẫn biên dịch và chạy chương trình
 
 ## Giới thiệu
@@ -25,20 +26,20 @@ Mã nguồn được tổ chức thành các module sau:
 
 #### Windows (với MinGW):
 ```powershell
-cd d:\PBL1\src
+cd src
 mingw32-make
 ```
 
 #### Linux/macOS:
 ```bash
-cd /path/to/PBL1/src
+cd src
 make
 ```
 
 Chương trình sẽ được biên dịch và tạo file thực thi `Program.exe` trong thư mục `src`.
 
 ### Biên dịch thủ công
-Nếu không sử dụng Makefile, bạn có thể biên dịch thủ công:
+Nếu không sử dụng Makefile, bạn có thể biên dịch thủ công (chạy lệnh này từ thư mục gốc dự án):
 
 ```bash
 g++ -std=c++11 -o Program.exe src/Main.cpp src/utils.cpp src/transportationModel.cpp src/initialSolution.cpp src/optimization.cpp src/ui.cpp src/solver.cpp
@@ -50,19 +51,27 @@ Sau khi biên dịch thành công, bạn có thể chạy chương trình:
 
 #### Windows:
 ```powershell
-cd d:\PBL1
+# Từ thư mục gốc của dự án
 .\Program.exe
 ```
 
 hoặc:
 ```powershell
-cd d:\PBL1\src
+# Từ thư mục src
+cd src
 .\Program.exe
 ```
 
 #### Linux/macOS:
 ```bash
-cd /path/to/PBL1
+# Từ thư mục gốc của dự án
+./Program.exe
+```
+
+hoặc:
+```bash
+# Từ thư mục src
+cd src
 ./Program.exe
 ```
 
